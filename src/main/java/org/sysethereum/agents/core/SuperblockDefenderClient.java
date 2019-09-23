@@ -1,9 +1,6 @@
 package org.sysethereum.agents.core;
 
 import lombok.extern.slf4j.Slf4j;
-import org.sysethereum.agents.constants.AgentConstants;
-import org.sysethereum.agents.constants.SystemProperties;
-import org.sysethereum.agents.core.bridge.Superblock;
 import org.sysethereum.agents.core.syscoin.*;
 import org.sysethereum.agents.core.eth.EthWrapper;
 import org.slf4j.Logger;
@@ -18,19 +15,14 @@ import java.util.*;
  * and defends/confirms the ones submitted by the agent.
  * @author Catalina Juarros
  */
+
 @Service
 @Slf4j(topic = "SuperblockDefenderClient")
 public class SuperblockDefenderClient extends SuperblockBaseClient {
     private static final Logger logger = LoggerFactory.getLogger("SuperblockDefenderClient");
 
-    public SuperblockDefenderClient(
-            SystemProperties systemProperties,
-            AgentConstants agentConstants,
-            SyscoinWrapper syscoinWrapper,
-            EthWrapper ethWrapper,
-            SuperblockChain superblockChain
-    ) {
-        super("Superblock defender client", systemProperties, agentConstants, syscoinWrapper, ethWrapper, superblockChain);
+    public SuperblockDefenderClient() {
+        super("Superblock defender client");
     }
 
     @Override
@@ -214,11 +206,11 @@ public class SuperblockDefenderClient extends SuperblockBaseClient {
     private boolean isMine(EthWrapper.RespondHeadersEvent respondHeadersEvent) {
         return respondHeadersEvent.submitter.equals(myAddress);
     }
-
     @Override
     protected long getConfirmations() {
-        return agentConstants.getDefenderConfirmations();
+        return config.getAgentConstants().getDefenderConfirmations();
     }
+
 
     /**
      * Removes superblocks from the data structure that keeps track of semi-approved superblocks.
@@ -245,7 +237,7 @@ public class SuperblockDefenderClient extends SuperblockBaseClient {
 
     @Override
     protected long getTimerTaskPeriod() {
-        return agentConstants.getDefenderTimerTaskPeriod();
+        return config.getAgentConstants().getDefenderTimerTaskPeriod();
     }
 
 

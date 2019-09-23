@@ -1,6 +1,7 @@
 package org.sysethereum.agents.contract;
 
 import org.web3j.abi.EventEncoder;
+import org.web3j.abi.TypeReference;
 import org.web3j.abi.datatypes.Address;
 import org.web3j.abi.datatypes.Event;
 import org.web3j.abi.datatypes.generated.Bytes32;
@@ -14,17 +15,17 @@ import org.web3j.tx.TransactionManager;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 
 /**
  * Extension of web3j auto-generated SyscoinSuperblocks class
  * with event polling methods for SuperblockDefenderClient.
- *
  * @author Catalina Juarros
  */
-public class SyscoinSuperblocksExtended extends SyscoinSuperblocks {
 
+public class SyscoinSuperblocksExtended extends SyscoinSuperblocks {
     protected SyscoinSuperblocksExtended(String contractAddress, Web3j web3j, TransactionManager transactionManager,
                                          BigInteger gasPrice, BigInteger gasLimit) {
         super(contractAddress, web3j, transactionManager, gasPrice, gasLimit);
@@ -41,13 +42,14 @@ public class SyscoinSuperblocksExtended extends SyscoinSuperblocks {
     }
     /* ---- EVENTS FOR POLLING ---- */
 
-    public List<NewSuperblockEventResponse> getNewSuperblockEvents(
-            DefaultBlockParameter startBlock,
-            DefaultBlockParameter endBlock
-    ) throws IOException {
+    public List<NewSuperblockEventResponse> getNewSuperblockEvents(DefaultBlockParameter startBlock,
+                                                                   DefaultBlockParameter endBlock) throws IOException {
 
         List<NewSuperblockEventResponse> result = new ArrayList<>();
-        List<EthLog.LogResult> logResults = filterLog(startBlock, endBlock, NEWSUPERBLOCK_EVENT);
+        EthFilter filter = new EthFilter(startBlock, endBlock, getContractAddress());
+        filter.addSingleTopic(EventEncoder.encode(NEWSUPERBLOCK_EVENT));
+        EthLog ethLog = web3j.ethGetLogs(filter).send();
+        List<EthLog.LogResult> logResults = ethLog.getLogs();
 
         for (EthLog.LogResult logResult : logResults) {
             Log log = (Log) logResult.get();
@@ -55,21 +57,23 @@ public class SyscoinSuperblocksExtended extends SyscoinSuperblocks {
 
             NewSuperblockEventResponse newSuperblockResponse = new NewSuperblockEventResponse();
             newSuperblockResponse.log = eventValues.getLog();
-            newSuperblockResponse.superblockHash = new Bytes32((byte[]) eventValues.getNonIndexedValues().get(0).getValue());
-            newSuperblockResponse.who = new Address((String) eventValues.getNonIndexedValues().get(1).getValue());
+            newSuperblockResponse.superblockHash = new Bytes32((byte[])eventValues.getNonIndexedValues().get(0).getValue());
+            newSuperblockResponse.who =  new Address((String)eventValues.getNonIndexedValues().get(1).getValue());
             result.add(newSuperblockResponse);
         }
 
         return result;
     }
 
-    public List<ApprovedSuperblockEventResponse> getApprovedSuperblockEvents(
-            DefaultBlockParameter startBlock,
-            DefaultBlockParameter endBlock
-    ) throws IOException {
+    public List<ApprovedSuperblockEventResponse> getApprovedSuperblockEvents(DefaultBlockParameter startBlock,
+                                                                             DefaultBlockParameter endBlock)
+            throws IOException {
 
         List<ApprovedSuperblockEventResponse> result = new ArrayList<>();
-        List<EthLog.LogResult> logResults = filterLog(startBlock, endBlock, APPROVEDSUPERBLOCK_EVENT);
+        EthFilter filter = new EthFilter(startBlock, endBlock, getContractAddress());
+        filter.addSingleTopic(EventEncoder.encode(APPROVEDSUPERBLOCK_EVENT));
+        EthLog ethLog = web3j.ethGetLogs(filter).send();
+        List<EthLog.LogResult> logResults = ethLog.getLogs();
 
         for (EthLog.LogResult logResult : logResults) {
             Log log = (Log) logResult.get();
@@ -78,21 +82,48 @@ public class SyscoinSuperblocksExtended extends SyscoinSuperblocks {
             ApprovedSuperblockEventResponse approvedSuperblockResponse = new ApprovedSuperblockEventResponse();
             approvedSuperblockResponse.log = eventValues.getLog();
 
-            approvedSuperblockResponse.superblockHash = new Bytes32((byte[]) eventValues.getNonIndexedValues().get(0).getValue());
-            approvedSuperblockResponse.who = new Address((String) eventValues.getNonIndexedValues().get(1).getValue());
+            approvedSuperblockResponse.superblockHash = new Bytes32((byte[])eventValues.getNonIndexedValues().get(0).getValue());
+            approvedSuperblockResponse.who =  new Address((String)eventValues.getNonIndexedValues().get(1).getValue());
             result.add(approvedSuperblockResponse);
         }
 
         return result;
     }
 
-    public List<SemiApprovedSuperblockEventResponse> getSemiApprovedSuperblockEvents(
-            DefaultBlockParameter startBlock,
-            DefaultBlockParameter endBlock
-    ) throws IOException {
+    public List<ChallengeSuperblockEventResponse> getChallengeSuperblockEvents(DefaultBlockParameter startBlock,
+                                                                               DefaultBlockParameter endBlock)
+            throws IOException {
+
+        List<ChallengeSuperblockEventResponse> result = new ArrayList<>();
+        EthFilter filter = new EthFilter(startBlock, endBlock, getContractAddress());
+        filter.addSingleTopic(EventEncoder.encode(CHALLENGESUPERBLOCK_EVENT));
+        EthLog ethLog = web3j.ethGetLogs(filter).send();
+        List<EthLog.LogResult> logResults = ethLog.getLogs();
+
+        for (EthLog.LogResult logResult : logResults) {
+            Log log = (Log) logResult.get();
+            EventValuesWithLog eventValues = extractEventParametersWithLog(CHALLENGESUPERBLOCK_EVENT, log);
+
+            ChallengeSuperblockEventResponse challengeSuperblockResponse = new ChallengeSuperblockEventResponse();
+            challengeSuperblockResponse.log = eventValues.getLog();
+            challengeSuperblockResponse.superblockHash = new Bytes32((byte[])eventValues.getNonIndexedValues().get(0).getValue());
+            challengeSuperblockResponse.who = new Address((String)eventValues.getNonIndexedValues().get(1).getValue());
+            result.add(challengeSuperblockResponse);
+        }
+
+        return result;
+    }
+
+    public List<SemiApprovedSuperblockEventResponse> getSemiApprovedSuperblockEvents(DefaultBlockParameter startBlock,
+                                                                               DefaultBlockParameter endBlock)
+            throws IOException {
+
 
         List<SemiApprovedSuperblockEventResponse> result = new ArrayList<>();
-        List<EthLog.LogResult> logResults = filterLog(startBlock, endBlock, SEMIAPPROVEDSUPERBLOCK_EVENT);
+        EthFilter filter = new EthFilter(startBlock, endBlock, getContractAddress());
+        filter.addSingleTopic(EventEncoder.encode(SEMIAPPROVEDSUPERBLOCK_EVENT));
+        EthLog ethLog = web3j.ethGetLogs(filter).send();
+        List<EthLog.LogResult> logResults = ethLog.getLogs();
 
         for (EthLog.LogResult logResult : logResults) {
             Log log = (Log) logResult.get();
@@ -108,10 +139,9 @@ public class SyscoinSuperblocksExtended extends SyscoinSuperblocks {
         return result;
     }
 
-    public List<InvalidSuperblockEventResponse> getInvalidSuperblockEvents(
-            DefaultBlockParameter startBlock,
-            DefaultBlockParameter endBlock
-    ) throws IOException {
+    public List<InvalidSuperblockEventResponse> getInvalidSuperblockEvents(DefaultBlockParameter startBlock,
+                                                                               DefaultBlockParameter endBlock)
+            throws IOException {
 
         List<InvalidSuperblockEventResponse> result = new ArrayList<>();
         EthFilter filter = new EthFilter(startBlock, endBlock, getContractAddress());
@@ -131,12 +161,5 @@ public class SyscoinSuperblocksExtended extends SyscoinSuperblocks {
         }
 
         return result;
-    }
-
-    private List<EthLog.LogResult> filterLog(DefaultBlockParameter startBlock, DefaultBlockParameter endBlock, Event event) throws IOException {
-        EthFilter filter = new EthFilter(startBlock, endBlock, getContractAddress());
-        filter.addSingleTopic(EventEncoder.encode(event));
-        EthLog ethLog = web3j.ethGetLogs(filter).send();
-        return ethLog.getLogs();
     }
 }

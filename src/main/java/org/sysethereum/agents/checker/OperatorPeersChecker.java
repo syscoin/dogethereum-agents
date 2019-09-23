@@ -5,10 +5,11 @@
  */
 package org.sysethereum.agents.checker;
 
+import com.google.common.collect.Lists;
 import lombok.extern.slf4j.Slf4j;
 import org.bitcoinj.core.PeerAddress;
+import org.sysethereum.agents.constants.SystemProperties;
 import org.springframework.stereotype.Component;
-import org.sysethereum.agents.constants.AgentConstants;
 
 import javax.annotation.PostConstruct;
 import java.io.IOException;
@@ -16,31 +17,23 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.List;
 
+@Component
+@Slf4j(topic = "OperatorPeersChecker")
 /**
  * Makes sure the syscoin peer is up. Otherwise prevents the agent from starting (fail fast strategy)
  */
-@Component
-@Slf4j(topic = "OperatorPeersChecker")
 public class OperatorPeersChecker {
 
-    private final AgentConstants agentConstants;
-    private final SyscoinPeerFactory syscoinPeerFactory;
-
-    public OperatorPeersChecker(
-            AgentConstants agentConstants,
-            SyscoinPeerFactory syscoinPeerFactory
-    ) {
-        this.agentConstants = agentConstants;
-        this.syscoinPeerFactory = syscoinPeerFactory;
+    public OperatorPeersChecker() {
     }
 
     @PostConstruct
     public void setup() throws Exception {
-        int defaultPort = agentConstants.getSyscoinParams().getPort();
-        List<String> peerStrings = List.of("127.0.0.1");
-        List<PeerAddress> peerAddresses = syscoinPeerFactory.buildSyscoinPeerAddresses(defaultPort, peerStrings);
-
-        if (peerAddresses.isEmpty()) {
+        SystemProperties config = SystemProperties.CONFIG;
+        int defaultPort = config.getAgentConstants().getSyscoinParams().getPort();
+        List<String> peerStrings = Lists.newArrayList("127.0.0.1");
+        List<PeerAddress> peerAddresses = SyscoinPeerFactory.buildSyscoinPeerAddresses(defaultPort, peerStrings);
+        if (peerAddresses == null || peerAddresses.isEmpty()) {
             // Can't happen until we implement peer list configuration
             throw new RuntimeException("No Syscoin Peers");
         }
@@ -57,7 +50,8 @@ public class OperatorPeersChecker {
         try {
             Socket socket = new Socket(host, port);
             socket.close();
-        } catch (IOException ex) {
+        }
+        catch (IOException ex) {
             throw new RuntimeException("Cannot connect to Syscoin node " + address.getSocketAddress().getHostName() + ":" + address.getSocketAddress().getPort());
         }
     }

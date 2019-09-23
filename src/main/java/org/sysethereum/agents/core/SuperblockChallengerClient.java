@@ -1,16 +1,14 @@
 package org.sysethereum.agents.core;
 
 import lombok.extern.slf4j.Slf4j;
-import org.sysethereum.agents.constants.AgentConstants;
-import org.sysethereum.agents.constants.SystemProperties;
+import org.bitcoinj.core.Sha256Hash;
+import org.bitcoinj.core.StoredBlock;
 import org.sysethereum.agents.core.eth.EthWrapper;
 import org.sysethereum.agents.core.syscoin.Keccak256Hash;
-import org.sysethereum.agents.core.bridge.Superblock;
+import org.sysethereum.agents.core.syscoin.Superblock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.sysethereum.agents.core.syscoin.SuperblockChain;
-import org.sysethereum.agents.core.syscoin.SyscoinWrapper;
 
 import java.io.*;
 import java.math.BigInteger;
@@ -30,14 +28,8 @@ public class SuperblockChallengerClient extends SuperblockBaseClient {
     private HashSet<Keccak256Hash> semiApprovedSet;
     private File semiApprovedSetFile;
 
-    public SuperblockChallengerClient(
-            SystemProperties systemProperties,
-            AgentConstants agentConstants,
-            SyscoinWrapper syscoinWrapper,
-            EthWrapper ethWrapper,
-            SuperblockChain superblockChain
-    ) {
-        super("Superblock challenger client", systemProperties, agentConstants, syscoinWrapper, ethWrapper, superblockChain);
+    public SuperblockChallengerClient() {
+        super("Superblock challenger client");
     }
 
     @Override
@@ -193,8 +185,10 @@ public class SuperblockChallengerClient extends SuperblockBaseClient {
 
 
     private boolean challengedByMe(EthWrapper.SuperblockEvent superblockEvent) throws Exception {
-        return ethWrapper.getClaimChallenger(superblockEvent.superblockId).getValue().equals(myAddress);
+        return ethWrapper.getClaimChallenger(superblockEvent.superblockId).equals(myAddress);
     }
+
+
 
     /* ---- OVERRIDE ABSTRACT METHODS ---- */
 
@@ -236,7 +230,7 @@ public class SuperblockChallengerClient extends SuperblockBaseClient {
 
     @Override
     protected long getConfirmations() {
-        return agentConstants.getChallengerConfirmations();
+        return config.getAgentConstants().getChallengerConfirmations();
     }
 
     protected void callBattleTimeouts() throws Exception {
@@ -282,7 +276,7 @@ public class SuperblockChallengerClient extends SuperblockBaseClient {
 
     @Override
     protected long getTimerTaskPeriod() {
-        return agentConstants.getChallengerTimerTaskPeriod();
+        return config.getAgentConstants().getChallengerTimerTaskPeriod();
     }
 
     /**

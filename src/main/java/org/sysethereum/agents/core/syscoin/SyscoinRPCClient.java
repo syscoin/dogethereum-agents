@@ -3,29 +3,35 @@
  */
 package org.sysethereum.agents.core.syscoin;
 
-import com.thetransactioncompany.jsonrpc2.JSONRPC2Request;
-import com.thetransactioncompany.jsonrpc2.JSONRPC2Response;
-import com.thetransactioncompany.jsonrpc2.client.JSONRPC2Session;
-import com.thetransactioncompany.jsonrpc2.client.JSONRPC2SessionException;
-import lombok.extern.slf4j.Slf4j;
-import net.minidev.json.JSONObject;
-import org.springframework.stereotype.Service;
-import org.sysethereum.agents.constants.SystemProperties;
 
-import java.net.MalformedURLException;
-import java.net.URL;
+import lombok.extern.slf4j.Slf4j;
+// The Client sessions package
+import com.thetransactioncompany.jsonrpc2.client.*;
+
+// The Base package for representing JSON-RPC 2.0 messages
+import com.thetransactioncompany.jsonrpc2.*;
+
+// The JSON Smart package for JSON encoding/decoding (optional)
+import net.minidev.json.*;
+
+// For creating URLs
+import java.net.*;
 import java.util.List;
 
-@Service
+import org.springframework.stereotype.Component;
+import org.sysethereum.agents.constants.SystemProperties;
+
 @Slf4j(topic = "SyscoinRPCClient")
 public class SyscoinRPCClient {
 
-    private final JSONRPC2Session rpcSession;
+    private int requestId = 0;
 
-    public SyscoinRPCClient(SystemProperties config) throws MalformedURLException {
+    private JSONRPC2Session rpcSession;
+    public SyscoinRPCClient() throws MalformedURLException {
+        SystemProperties config = SystemProperties.CONFIG;
         rpcSession = new JSONRPC2Session(new URL(config.syscoinRPCURL()));
         rpcSession.getOptions().ignoreVersion(true);
-        rpcSession.setConnectionConfigurator(new SyscoinRPCBasicAuth(config.syscoinRPCUser(), config.syscoinRPCPassword()));
+        rpcSession.setConnectionConfigurator(new SyscoinRPCBasicAuth(config.syscoinRPCUser(),config.syscoinRPCPassword()));
     }
 
     public String makeCoreCall(String method, List<Object> params) throws JSONRPC2SessionException {
@@ -37,7 +43,7 @@ public class SyscoinRPCClient {
     }
 
     private JSONObject rpcCall(String method, List<Object> params) throws JSONRPC2SessionException {
-        JSONRPC2Request request = new JSONRPC2Request(method, params, 1);
+        JSONRPC2Request request = new JSONRPC2Request(method, params, ++requestId);
         JSONRPC2Response response = rpcSession.send(request);
         JSONObject result;
         if (response.indicatesSuccess()) {

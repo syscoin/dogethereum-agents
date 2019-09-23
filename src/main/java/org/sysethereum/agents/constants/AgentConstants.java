@@ -1,7 +1,10 @@
 package org.sysethereum.agents.constants;
 
+import org.bitcoinj.core.Coin;
+import org.sysethereum.agents.core.syscoin.Superblock;
 import org.libdohj.params.AbstractSyscoinParams;
-import org.sysethereum.agents.core.bridge.SuperblockData;
+
+import java.math.BigInteger;
 
 /**
  * Agent and Bridge constants.
@@ -9,11 +12,12 @@ import org.sysethereum.agents.core.bridge.SuperblockData;
  */
 public class AgentConstants {
 
+
     protected AbstractSyscoinParams syscoinParams;
 
     protected long syscoinToEthTimerTaskPeriod;
     // Minimum number of confirmations a tx has to have in order to EVALUATE relaying it to eth
-    protected SuperblockData genesisSuperblock;
+    protected Superblock genesisSuperblock;
     protected long defenderTimerTaskPeriod;
     protected long challengerTimerTaskPeriod;
     protected long defenderConfirmations;
@@ -22,30 +26,25 @@ public class AgentConstants {
     protected int ethInitialCheckpoint;
     protected String networkId;
 
+
     public AbstractSyscoinParams getSyscoinParams() {
         return syscoinParams;
     }
 
-    public long getSyscoinToEthTimerTaskPeriod() {
-        return syscoinToEthTimerTaskPeriod;
-    }
-
-    public SuperblockData getGenesisSuperblock() {
+    public long getSyscoinToEthTimerTaskPeriod() { return syscoinToEthTimerTaskPeriod; }
+    public Superblock getGenesisSuperblock() {
         return genesisSuperblock;
     }
 
     public long getDefenderTimerTaskPeriod() {
         return defenderTimerTaskPeriod;
     }
-
     public long getChallengerTimerTaskPeriod() {
         return challengerTimerTaskPeriod;
     }
-
     public long getDefenderConfirmations() {
         return defenderConfirmations;
     }
-
     public long getChallengerConfirmations() {
         return challengerConfirmations;
     }
@@ -53,9 +52,9 @@ public class AgentConstants {
     public String getNetworkId() {
         return networkId;
     }
-
     public int getEthInitialCheckpoint() {
         return ethInitialCheckpoint;
     }
+
 
 }
