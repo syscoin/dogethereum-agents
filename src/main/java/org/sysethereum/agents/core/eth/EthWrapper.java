@@ -155,7 +155,7 @@ public class EthWrapper {
      */
     public void updateContractFacadesGasPrice() throws IOException {
         BigInteger jsonGasPrice = jsonGasRanges.gasPrice();
-        BigInteger suggestedGasPrice = jsonGasPrice == BigInteger.ZERO? web3.ethGasPrice().send().getGasPrice(): jsonGasPrice;
+        BigInteger suggestedGasPrice = jsonGasPrice.equals(BigInteger.ZERO)? web3.ethGasPrice().send().getGasPrice(): jsonGasPrice;
         if (suggestedGasPrice.compareTo(gasPriceMinimum) > 0) {
             if (!gasPriceMaximum.equals(BigInteger.ZERO) && suggestedGasPrice.compareTo(gasPriceMaximum) > 0) {
                 suggestedGasPrice = gasPriceMaximum;
@@ -397,7 +397,7 @@ public class EthWrapper {
         CompletableFuture<TransactionReceipt> futureReceipt = battleManager.respondBlockHeaders(
                 new Bytes32(superblockId.getBytes()), new DynamicBytes(blockHeaderBytes), new Uint256(numHashesRequired)).sendAsync();
         futureReceipt.thenAcceptAsync((TransactionReceipt receipt) ->
-                logger.info("Responded to last block header query for Syscoin superblock {} session {}, Receipt: {}",
+                logger.info("Responded to last block header query for Syscoin superblock {}, Receipt: {}",
                         superblockId, receipt)
         );
 
