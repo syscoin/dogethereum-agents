@@ -65,12 +65,6 @@ public class SystemProperties {
                 : "SuperblockDefenderSessionToSuperblockMap.dat";
     }
 
-    public String getSuperblockToSessionsMapFilename(AgentRole agentRole) {
-        return agentRole == CHALLENGER
-                ? "SuperblockChallengerSuperblockToSessionsMap.dat"
-                : "SuperblockDefenderSuperblockToSessionsMap.dat";
-    }
-
     public boolean isAgentRoleEnabled(AgentRole agentRole) {
         return agentRole == CHALLENGER
                 ? getBooleanProperty("syscoin.superblock.challenger.enabled")
