@@ -115,7 +115,7 @@ public class SuperblockContractApi {
                 ))
                 .collect(toList());
     }
-
+  
     public void challengeCancelTransfer(BlockSPVProof blockSPVProof, SuperblockSPVProof superblockSPVProof){
 
         List<Uint256> txSiblings = new ArrayList<>();

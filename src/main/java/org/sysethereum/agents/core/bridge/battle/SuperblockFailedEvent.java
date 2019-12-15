@@ -12,5 +12,6 @@ public class SuperblockFailedEvent {
         this.superblockHash = superblockHash;
         this.challenger = challenger;
         this.processCounter = processCounter;
+
     }
 }
