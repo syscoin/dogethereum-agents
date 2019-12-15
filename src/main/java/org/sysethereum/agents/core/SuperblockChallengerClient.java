@@ -1,23 +1,24 @@
 package org.sysethereum.agents.core;
 
+import com.google.gson.Gson;
 import lombok.extern.slf4j.Slf4j;
+import org.bitcoinj.core.Sha256Hash;
 import org.sysethereum.agents.constants.AgentConstants;
 import org.sysethereum.agents.constants.AgentRole;
 import org.sysethereum.agents.constants.EthAddresses;
 import org.sysethereum.agents.constants.SystemProperties;
 import org.sysethereum.agents.contract.SyscoinBattleManagerExtended;
-import org.sysethereum.agents.core.bridge.BattleContractApi;
-import org.sysethereum.agents.core.bridge.ClaimContractApi;
-import org.sysethereum.agents.core.bridge.SuperblockContractApi;
+import org.sysethereum.agents.core.bridge.*;
 import org.sysethereum.agents.core.bridge.battle.NewBattleEvent;
+import org.sysethereum.agents.core.bridge.battle.NewCancelTransferRequestEvent;
 import org.sysethereum.agents.core.bridge.battle.SuperblockFailedEvent;
+import org.sysethereum.agents.core.eth.BridgeTransferInfo;
+import org.sysethereum.agents.core.syscoin.*;
 import org.sysethereum.agents.core.eth.EthWrapper;
-import org.sysethereum.agents.core.syscoin.Keccak256Hash;
-import org.sysethereum.agents.core.bridge.Superblock;
+import org.sysethereum.agents.core.eth.SuperblockSPVProof;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.sysethereum.agents.core.syscoin.SuperblockChain;
 import org.sysethereum.agents.service.ChallengeEmailNotifier;
 import org.sysethereum.agents.service.PersistentFileStore;
 import org.sysethereum.agents.util.RandomizationCounter;
@@ -47,10 +48,12 @@ public class SuperblockChallengerClient extends SuperblockBaseClient {
     private final SuperblockContractApi superblockContractApi;
     private final ClaimContractApi claimContractApi;
     private final BattleContractApi battleContractApi;
+    private final ERC20ManagerContractApi erc20ManagerContractApi;
 
     private HashSet<Keccak256Hash> semiApprovedSet;
     private final File semiApprovedSetFile;
-
+    private final SyscoinToEthClient syscoinToEthClient;
+    private final SyscoinRPCClient syscoinRPCClient;
     public SuperblockChallengerClient(
             SystemProperties config,
             AgentConstants agentConstants,
@@ -61,8 +64,11 @@ public class SuperblockChallengerClient extends SuperblockBaseClient {
             SuperblockContractApi superblockContractApi,
             ClaimContractApi claimContractApi,
             BattleContractApi battleContractApi,
+            ERC20ManagerContractApi erc20ManagerContractApi,
             SyscoinBattleManagerExtended battleManagerForChallenges,
-            ChallengeEmailNotifier challengeEmailNotifier
+            ChallengeEmailNotifier challengeEmailNotifier,
+            SyscoinToEthClient syscoinToEthClient,
+            SyscoinRPCClient syscoinRPCClient
     ) {
         super(AgentRole.CHALLENGER, config, agentConstants, ethWrapper, superblockContractApi, battleContractApi, claimContractApi, challengeEmailNotifier);
 
@@ -75,10 +81,13 @@ public class SuperblockChallengerClient extends SuperblockBaseClient {
 
         this.randomizationCounter = new RandomizationCounter();
         this.battleManagerForChallenges = battleManagerForChallenges;
+        this.erc20ManagerContractApi = erc20ManagerContractApi;
         this.myAddress = ethAddresses.challengerAddress;
 
         this.semiApprovedSet = new HashSet<>();
         this.semiApprovedSetFile = Paths.get(config.dataDirectory(), "SemiApprovedSet.dat").toAbsolutePath().toFile();
+        this.syscoinToEthClient = syscoinToEthClient;
+        this.syscoinRPCClient = syscoinRPCClient;
     }
 
     @Override
@@ -89,8 +98,10 @@ public class SuperblockChallengerClient extends SuperblockBaseClient {
 
             // Maintain data structures
             getSemiApproved(fromBlock, toBlock);
+            getApproved(fromBlock, toBlock);
 
             challengerWonBattles(fromBlock, toBlock);
+            getCancelTransferRequests(fromBlock, toBlock);
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
             return fromBlock - 1;
@@ -108,6 +119,50 @@ public class SuperblockChallengerClient extends SuperblockBaseClient {
             logger.error(e.getMessage(), e);
         }
     }
+    private BlockSPVProof GetBlockSPVProof(String txid){
+        LinkedHashMap<String, String> params = new LinkedHashMap<>();
+        params.put("method", "syscoingetspvproof");
+        params.put("txid", txid);
+        String response;
+        try {
+            String method = params.get("method");
+            params.remove("method");
+            ArrayList<Object> paramList = new ArrayList<>(params.values());
+            response = syscoinRPCClient.makeCoreCall(method, paramList);
+            Gson gson = new Gson();
+            return gson.fromJson(response, BlockSPVProof.class);
+        } catch (Exception e) {
+
+        }
+        return null;
+    }
+    private Object GetSuperblockSPVProof(String blockhash){
+        try {
+            return syscoinToEthClient.getSuperblockSPVProof(Sha256Hash.wrap(blockhash), 0, false);
+        }
+        catch(Exception e){
+
+        }
+        return null;
+    }
+    private SyscoinMintProof GetSysTXIDFromBridgeTransferID(String bridgeTransferID){
+        LinkedHashMap<String, String> params = new LinkedHashMap<>();
+        params.put("method", "syscoincheckmint");
+        params.put("bridgeTransferID", bridgeTransferID);
+        String response;
+        try {
+            String method = params.get("method");
+            params.remove("method");
+            ArrayList<Object> paramList = new ArrayList<>(params.values());
+            response = syscoinRPCClient.makeCoreCall(method, paramList);
+            Gson gson = new Gson();
+            return gson.fromJson(response, SyscoinMintProof.class);
+        } catch (Exception e) {
+
+        }
+        return null;
+    }
+
 
 
     /* ---- CHALLENGING ---- */
@@ -154,8 +209,8 @@ public class SuperblockChallengerClient extends SuperblockBaseClient {
         boolean removeFromContract = false;
         for (SuperblockFailedEvent event : events) {
             if (isMine(event)) {
-                logger.info("Challenger won battle on superblock {}",
-                        event.superblockHash);
+                logger.info("Challenger won battle on superblock {} process counter {}",
+                        event.superblockHash, event.processCounter.getValue().intValue());
                 if (sessionToSuperblockMap.contains(event.superblockHash)) {
                     sessionToSuperblockMap.remove(event.superblockHash);
                     removeFromContract = true;
@@ -178,9 +233,6 @@ public class SuperblockChallengerClient extends SuperblockBaseClient {
      */
     private void validateNewSuperblocks(long fromBlock, long toBlock) throws Exception {
         List<SuperblockContractApi.SuperblockEvent> newSuperblockEvents = superblockContractApi.getNewSuperblocks(fromBlock, toBlock);
-        if(newSuperblockEvents.size() > 0){
-            randomizationCounter.updateRandomValue();
-        }
         List<Keccak256Hash> toChallenge = new ArrayList<>();
         for (SuperblockContractApi.SuperblockEvent newSuperblock : newSuperblockEvents) {
             logger.info("NewSuperblock {}. Validating...", newSuperblock.superblockId);
@@ -228,11 +280,45 @@ public class SuperblockChallengerClient extends SuperblockBaseClient {
      */
     private void respondToNewBattles(long fromBlock, long toBlock) throws Exception {
         List<NewBattleEvent> newBattleEvents = battleContractApi.getNewBattleEvents(fromBlock, toBlock);
-
+        // switch modes and only when we aren't looking back 5k blocks (initial sync)
+        if(newBattleEvents.size() > 0 && fromBlock != (toBlock - 5000)){
+            // aggressive mode
+            if(!ethWrapper.getAggressiveMode()) {
+                logger.info("Switching to aggressive mode...");
+                // only set to aggressive mode on timer if its the first time, since it clears it and next time shouldn't clear this timer
+                ethWrapper.setAggressiveMode(true);
+                syscoinToEthClient.setupTimer();
+            }
+        }
         for (NewBattleEvent newBattleEvent : newBattleEvents) {
             if (isMyBattleEvent(newBattleEvent) && battleContractApi.sessionExists(newBattleEvent.superblockHash)) {
                 sessionToSuperblockMap.add(newBattleEvent.superblockHash);
             }
+        }
+    }
+    private void updateAggressiveMode(boolean bMode){
+        // set timer back to normal
+        if(ethWrapper.getAggressiveMode()) {
+            logger.info("Switching back to normal mode from aggressive...");
+            // only set timer to normal delay once, since this will be latching when we go from challenge to new superblock
+            ethWrapper.setAggressiveMode(bMode);
+            syscoinToEthClient.setupTimer();
+        }
+        randomizationCounter.updateRandomValue();
+    }
+    /**
+     * Gets new approved superblocks to track aggressive mode
+     * @param fromBlock
+     * @param toBlock
+     * @throws Exception
+     */
+    private void getApproved(long fromBlock, long toBlock) throws Exception {
+        List<SuperblockContractApi.SuperblockEvent> approvedSuperblockEvents =
+                superblockContractApi.getSemiApprovedSuperblocks(fromBlock, toBlock);
+        // switch modes and only when we aren't looking back 5k blocks (initial sync)
+        if(approvedSuperblockEvents.size() > 0 && fromBlock != (toBlock - 5000)){
+            // set timer back to normal
+            updateAggressiveMode(false);
         }
     }
 
@@ -246,12 +332,58 @@ public class SuperblockChallengerClient extends SuperblockBaseClient {
     private void getSemiApproved(long fromBlock, long toBlock) throws Exception {
         List<SuperblockContractApi.SuperblockEvent> semiApprovedSuperblockEvents =
                 superblockContractApi.getSemiApprovedSuperblocks(fromBlock, toBlock);
+        // switch modes and only when we aren't looking back 5k blocks (initial sync)
+        if(semiApprovedSuperblockEvents.size() > 0 && fromBlock != (toBlock - 5000)){
+            // set timer back to normal
+            updateAggressiveMode(false);
+        }
         for (SuperblockContractApi.SuperblockEvent superblockEvent : semiApprovedSuperblockEvents) {
             if (challengedByMe(superblockEvent))
                 semiApprovedSet.add(superblockEvent.superblockId);
         }
     }
+    /**
+     * Watches for CancelTransferRequest events and sees if the bridge id exists on Syscoin meaning the cancel request should be invalid, challenge it.
+     * @param fromBlock
+     * @param toBlock
+     * @throws Exception
+     */
+    private void getCancelTransferRequests(long fromBlock, long toBlock) throws Exception {
+        List<NewCancelTransferRequestEvent> cancelTransfersList =
+                erc20ManagerContractApi.getNewCancelTransferEvents(fromBlock, toBlock);
 
+        for (NewCancelTransferRequestEvent cancelTransferRequest : cancelTransfersList) {
+            logger.info("Found cancel transfer request for id {}...", cancelTransferRequest.bridgeTransferId.toString());
+            // lookup eth txid to get sys txid and if exists then we may want to challenge
+            SyscoinMintProof mintProof = GetSysTXIDFromBridgeTransferID(cancelTransferRequest.bridgeTransferId.toString());
+            // if sys txid exists for this transfer id
+            if(mintProof != null) {
+                logger.info("Checking to see if the transfer is still valid to challenge...");
+                // check if cancellation request is still valid
+                BridgeTransferInfo bridgeTransferInfo = erc20ManagerContractApi.getBridgeTransfer(cancelTransferRequest.bridgeTransferId);
+                if(bridgeTransferInfo.status == BridgeTransferInfo.BridgeTransferStatus.CancelRequested) {
+                    logger.info("Getting SPV proofs and challenging bridge transfer cancellation...");
+                    // get SPV proof of sys tx linking to block
+                    BlockSPVProof blockSPVProof = GetBlockSPVProof(mintProof.txid);
+                    // get SPV proof of block linking to superblock
+                    SuperblockSPVProof superblockSPVProof = (SuperblockSPVProof) GetSuperblockSPVProof(blockSPVProof.blockhash);
+                    // fill merkle proof in siblings section of blocksSPVProof
+                    syscoinToEthClient.fillBlockSPVProof(blockSPVProof, Sha256Hash.wrap(mintProof.txid));
+
+                    Thread.sleep(500); // let pending transactions propogate
+                    if (ethWrapper.arePendingTransactionsForChallengerAddress()) {
+                        throw new Exception("Skipping challenging cancel transfer, there are pending transaction for the challenger address.");
+                    }
+                    // submit spv proof of sys tx to claim submitters deposit and close session
+                    superblockContractApi.challengeCancelTransfer(blockSPVProof, superblockSPVProof);
+                }
+            }
+            else{
+                logger.info("Could not find Syscoin Mint Proof to challenge with...");
+            }
+        }
+
+    }
     /* ---- HELPER METHODS ---- */
 
     private boolean challengedByMe(SuperblockContractApi.SuperblockEvent superblockEvent) throws Exception {

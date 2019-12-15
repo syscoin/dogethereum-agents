@@ -41,7 +41,10 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.8.1</version>
-                <configuration />
+                <configuration>
+                    <source>11</source>
+                    <target>11</target>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -146,7 +149,7 @@
         <dependency>
             <groupId>org.libdohj</groupId>
             <artifactId>libdohj-core</artifactId>
-            <version>0.15.27-R</version>
+            <version>0.15.29-R</version>
         </dependency>
         <dependency>
             <groupId>com.google.code.gson</groupId>

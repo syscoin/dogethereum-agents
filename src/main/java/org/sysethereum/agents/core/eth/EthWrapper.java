@@ -69,7 +69,8 @@ public class EthWrapper {
     private final SyscoinWrapper syscoinWrapper;
     private final JsonGasRanges jsonGasRanges;
     private final Context syscoinContext;
-
+    private volatile boolean bAggressiveMode;
+  
     @Autowired
     public EthWrapper(
             Context syscoinContext,
@@ -109,7 +110,12 @@ public class EthWrapper {
 
         updateContractFacadesGasPrice();
     }
-
+    public void setAggressiveMode(boolean bMode){
+        bAggressiveMode = bMode;
+    }
+    public boolean getAggressiveMode(){
+        return bAggressiveMode;
+    }
 
     /**
      * Returns height of the Ethereum blockchain.
@@ -150,7 +156,18 @@ public class EthWrapper {
         }
         return pending.compareTo(latest) > 0;
     }
-
+    public void updateGasForAggressiveMode(){
+        BigInteger newGasPrice = gasPriceMinimum.multiply(BigInteger.TWO);
+        if (!gasPriceMaximum.equals(BigInteger.ZERO) && newGasPrice.compareTo(gasPriceMaximum) > 0) {
+            newGasPrice = gasPriceMaximum;
+        }
+        logger.info("Updating fee for aggressive mode to " + newGasPrice);
+        claimContractApi.updateGasPrice(newGasPrice);
+    }
+    public void updateGasForNormalMode(){
+        logger.info("Updating fee back to normal from aggressive mode to " + gasPriceMinimum);
+        claimContractApi.updateGasPrice(gasPriceMinimum);
+    }
     /**
      * Sets gas prices for all contract instances.
      * @throws IOException
@@ -258,7 +275,11 @@ public class EthWrapper {
      */
     @SuppressWarnings("UnusedReturnValue")
     public boolean sendStoreSuperblock(Superblock superblock, String account) throws Exception {
-
+        BigInteger processCounter = claimContractApi.getProcessCounter();
+        if(processCounter.compareTo(BigInteger.TEN) == 0){
+            logger.info("Superblock {} not sent because process counter is at maximum allowable in progress superblocks (10)", superblock.getHash());
+            return false;
+        }
         // Check if the parent has been approved before sending this superblock.
         Keccak256Hash parentId = superblock.getParentId();
         if (!(superblockContractApi.isApproved(parentId) || superblockContractApi.isSemiApproved(parentId))) {
@@ -299,11 +320,16 @@ public class EthWrapper {
 
         // Make any necessary deposits for sending the superblock
         claimContractApi.makeDepositIfNeeded(AgentRole.SUBMITTER, account, getSuperblockDeposit());
+        // if random counter is 0 it means we are in aggressive mode, increase the fees for superblock submission
+        boolean bAggressiveMode = getAggressiveMode();
+        if(bAggressiveMode){updateGasForAggressiveMode();}
 
         // The parent is either approved or semi approved. We can send the superblock.
         CompletableFuture<TransactionReceipt> futureReceipt = claimContractApi.proposeSuperblock(superblock);
+        // reset fees back to normal mode
+        if(bAggressiveMode){updateGasForNormalMode();}
 
-        logger.info("Sent superblock {}", superblock.getHash());
+        logger.info("Sent superblock {}, process counter {}", superblock.getHash(), processCounter.intValue());
         futureReceipt.handle((receipt, throwable) -> {
             if (receipt != null) {
                 logger.info("proposeSuperblock receipt {}", receipt.toString());

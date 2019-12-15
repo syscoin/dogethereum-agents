@@ -47,8 +47,27 @@ public class SyscoinSuperblocksExtended extends SyscoinSuperblocks {
 
             NewSuperblockEventResponse response = new NewSuperblockEventResponse();
             response.log = eventValues.getLog();
-            response.superblockHash = new Bytes32((byte[]) eventValues.getNonIndexedValues().get(0).getValue());
-            response.who = new Address((String) eventValues.getNonIndexedValues().get(1).getValue());
+            response.superblockHash = (Bytes32) eventValues.getNonIndexedValues().get(0);
+            response.who = (Address)eventValues.getNonIndexedValues().get(1);
+            result.add(response);
+        }
+
+        return result;
+    }
+
+    public List<ApprovedSuperblockEventResponse> getApprovedSuperblockEvents(long startBlock, long endBlock) throws IOException {
+
+        List<ApprovedSuperblockEventResponse> result = new ArrayList<>();
+        List<EthLog.LogResult> logResults = filterLog(startBlock, endBlock, APPROVEDSUPERBLOCK_EVENT);
+
+        for (EthLog.LogResult logResult : logResults) {
+            Log log = (Log) logResult.get();
+            EventValuesWithLog eventValues = extractEventParametersWithLog(APPROVEDSUPERBLOCK_EVENT, log);
+
+            ApprovedSuperblockEventResponse response = new ApprovedSuperblockEventResponse();
+            response.log = eventValues.getLog();
+            response.superblockHash = (Bytes32) eventValues.getNonIndexedValues().get(0);
+            response.who =  (Address)eventValues.getNonIndexedValues().get(1);
             result.add(response);
         }
 
@@ -66,8 +85,8 @@ public class SyscoinSuperblocksExtended extends SyscoinSuperblocks {
 
             SemiApprovedSuperblockEventResponse response = new SemiApprovedSuperblockEventResponse();
             response.log = eventValues.getLog();
-            response.superblockHash = new Bytes32((byte[])eventValues.getNonIndexedValues().get(0).getValue());
-            response.who =  new Address((String)eventValues.getNonIndexedValues().get(1).getValue());
+            response.superblockHash = (Bytes32) eventValues.getNonIndexedValues().get(0);
+            response.who =  (Address)eventValues.getNonIndexedValues().get(1);
             result.add(response);
         }
 

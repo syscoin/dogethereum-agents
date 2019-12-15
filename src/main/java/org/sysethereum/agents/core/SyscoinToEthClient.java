@@ -10,7 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.sysethereum.agents.constants.EthAddresses;
 import org.sysethereum.agents.core.bridge.Superblock;
 import org.sysethereum.agents.core.bridge.SuperblockContractApi;
-import org.sysethereum.agents.core.eth.SPVProof;
+import org.sysethereum.agents.core.eth.SuperblockSPVProof;
 import org.sysethereum.agents.core.syscoin.*;
 import lombok.extern.slf4j.Slf4j;
 import org.bitcoinj.core.*;
@@ -20,6 +20,7 @@ import org.sysethereum.agents.util.RestError;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.web3j.utils.Numeric;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -44,9 +45,8 @@ public class SyscoinToEthClient {
     private final EthAddresses ethAddresses;
 
     private final AgentConstants agentConstants;
-    private final Timer timer;
+    private Timer timer;
     private final Context syscoinContext;
-
     @Autowired
     public SyscoinToEthClient(
             Context syscoinContext,
@@ -66,19 +66,19 @@ public class SyscoinToEthClient {
         this.ethAddresses = ethAddresses;
         this.timer = new Timer("Syscoin to Eth client", true);
     }
-
-    public boolean setup() {
+    public boolean setupTimer(){
         try {
-            timer.scheduleAtFixedRate(
-                    new SyscoinToEthClientTimerTask(),
-                    20_000, // 20 seconds
-                    agentConstants.getSyscoinToEthTimerTaskPeriod()
-            );
+            timer.cancel();
+            timer.purge();
+            timer = new Timer("Syscoin to Eth client", true);
+            timer.scheduleAtFixedRate(new SyscoinToEthClientTimerTask(), ethWrapper.getAggressiveMode()? 0: 20_000, ethWrapper.getAggressiveMode()? agentConstants.getSyscoinToEthTimerTaskPeriodAggressive(): agentConstants.getSyscoinToEthTimerTaskPeriod());
         } catch (Exception e) {
             return false;
         }
-
         return true;
+    }
+    public boolean setup() {
+        return setupTimer();
     }
 
     public void cleanUp() {
@@ -143,7 +143,7 @@ public class SyscoinToEthClient {
      * Relays all unprocessed transactions to Ethereum contracts by calling sendRelayTx.
      * @throws Exception
      */
-    public Object getSuperblockSPVProof(Sha256Hash blockHash, int height) throws Exception {
+    public Object getSuperblockSPVProof(Sha256Hash blockHash, int height, boolean isApprovedCheck) throws Exception {
         synchronized (this) {
             Context.propagate(syscoinContext);
             StoredBlock txStoredBlock;
@@ -154,6 +154,7 @@ public class SyscoinToEthClient {
             if (txStoredBlock == null) {
                 return new RestError("Block has not been stored in local database. Block hash: " + blockHash);
             }
+
             Superblock txSuperblock = localSuperblockChain.findBySysBlockHash(txStoredBlock.getHeader().getHash());
 
             if (txSuperblock == null) {
@@ -161,7 +162,7 @@ public class SyscoinToEthClient {
                         "Block hash: " + txStoredBlock.getHeader().getHash());
             }
 
-            if (!superblockContractApi.isApproved(txSuperblock.getHash())) {
+            if (isApprovedCheck && !superblockContractApi.isApproved(txSuperblock.getHash())) {
                 return new RestError("Superblock has not been approved yet. " +
                         "Block hash: " + txStoredBlock.getHeader().getHash() + ", superblock ID: " + txSuperblock.getHash());
             }
@@ -190,9 +191,23 @@ public class SyscoinToEthClient {
         List<String> siblings = pmt.getTransactionPath(syscoinBlock.getHash())
                 .stream().map(Sha256Hash::toString).collect(toList());
 
-        return new SPVProof(syscoinBlockIndex, siblings, superblock.getHash().toString());
+        return new SuperblockSPVProof(syscoinBlockIndex, siblings, superblock.getHash().toString());
     }
+    /**
+     * Tx SPV Proof for challengeCancelBridgeTransfer
+     * @throws Exception
+     */
+    public void fillBlockSPVProof(BlockSPVProof blockSPVProof, Sha256Hash txHash) {
+        List<Sha256Hash> sha256Siblings = blockSPVProof.siblings.stream().map(Sha256Hash::wrap).collect(toList());
+        byte[] includeBits = new byte[(int) Math.ceil(blockSPVProof.siblings.size() / 8.0)];
+        Utils.setBitLE(includeBits, blockSPVProof.index);
+        SuperblockPartialMerkleTree superblockPMT = SuperblockPartialMerkleTree.buildFromLeaves(agentConstants.getSyscoinParams(),
+                includeBits, sha256Siblings);
 
+        blockSPVProof.siblings = superblockPMT.getTransactionPath(txHash)
+                .stream().map(Sha256Hash::toString).collect(toList());
+
+    }
     private static class SuperBlockResponse {
         public final String merkleRoot;
         public final long lastSyscoinBlockTime;
