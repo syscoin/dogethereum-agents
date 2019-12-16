@@ -361,7 +361,7 @@ public class SuperblockChallengerClient extends SuperblockBaseClient {
                 logger.info("Checking to see if the transfer is still valid to challenge...");
                 // check if cancellation request is still valid
                 BridgeTransferInfo bridgeTransferInfo = erc20ManagerContractApi.getBridgeTransfer(cancelTransferRequest.bridgeTransferId);
-                if(bridgeTransferInfo.status == BridgeTransferInfo.BridgeTransferStatus.CancelRequested) {
+               // if(bridgeTransferInfo.status == BridgeTransferInfo.BridgeTransferStatus.CancelRequested) {
                     logger.info("Getting SPV proofs and challenging bridge transfer cancellation...");
                     // get SPV proof of sys tx linking to block
                     BlockSPVProof blockSPVProof = GetBlockSPVProof(mintProof.txid);
@@ -377,10 +377,10 @@ public class SuperblockChallengerClient extends SuperblockBaseClient {
                     // submit spv proof of sys tx to claim submitters deposit and close session
                     superblockContractApi.challengeCancelTransfer(blockSPVProof, superblockSPVProof);
                 }
-            }
+           /* }
             else{
                 logger.info("Could not find Syscoin Mint Proof to challenge with...");
-            }
+            }*/
         }
 
     }
