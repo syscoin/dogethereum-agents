@@ -153,7 +153,7 @@ public class SyscoinClaimManager extends Contract {
 
     static {
         _addresses = new HashMap<String, String>();
-        _addresses.put("1", "0xDD569D1D41dBC7C1a66b4004d2bAa639d0CAc199");
+        _addresses.put("1", "0xd03a860F481e83a8659640dC75008e9FcDF5d879");
     }
 
     @Deprecated
@@ -910,6 +910,7 @@ public class SyscoinClaimManager extends Contract {
         public Bytes32 superblockHash;
 
         public Address challenger;
+
         public Uint256 processCounter;
     }
 
