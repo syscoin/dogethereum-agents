@@ -27,12 +27,12 @@ public class MainnetAgentConstantsFactory {
         var syscoinToEthTimerTaskPeriod = 45 * 1000;
         var syscoinToEthTimerTaskPeriodAggressive = 5 * 1000;
 
-        List<Sha256Hash> sysHashes = List.of(Sha256Hash.wrap("4327748479357319819e98b88df8a80535bff01b4b23ec3213f166b0a673f0c5"));
+        List<Sha256Hash> sysHashes = List.of(Sha256Hash.wrap("33de3e710118e85a26cd3673c9d24c6d044520a6241c37248cf2cacb4a100f0f"));
 
         var genesisSuperblock = new SuperblockData(
                 MerkleRootComputer.computeMerkleRoot(syscoinParams, sysHashes),
                 sysHashes,
-                1574263489, 1574263208, 403553112,
+                1576850904, 1576850690, 402958772,
                 Keccak256Hash.wrap(new byte[32]), // initialised with 0s
                 1
         );
