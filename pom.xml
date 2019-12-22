@@ -159,7 +159,7 @@
         <dependency>
             <groupId>org.web3j</groupId>
             <artifactId>core</artifactId>
-            <version>4.5.5</version>
+            <version>4.5.11</version>
         </dependency>
         <dependency>
             <groupId>com.squareup.okhttp3</groupId>
