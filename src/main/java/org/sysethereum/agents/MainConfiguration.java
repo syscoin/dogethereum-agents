@@ -257,7 +257,8 @@ public class MainConfiguration {
             GetSuperblockBySyscoinHandler getSuperblockBySyscoinHandler,
             GetSuperblockHandler getSuperblockHandler,
             GetSyscoinRPCHandler getSyscoinRPCHandler,
-            InfoHandler infoHandler
+            InfoHandler infoHandler,
+            GetSyscoinJHandler getSyscoinJHandler
     ) throws IOException, KeyManagementException, NoSuchAlgorithmException, KeyStoreException, CertificateException, UnrecoverableKeyException {
         HttpsServer httpsServer  = HttpsServer.create(new InetSocketAddress(8443), 0);
         if(!config.isServerEnabled())
@@ -308,6 +309,7 @@ public class MainConfiguration {
         httpsServer.createContext("/superblockbysyscoinblock", getSuperblockBySyscoinHandler);
         httpsServer.createContext("/superblock", getSuperblockHandler);
         httpsServer.createContext("/syscoinrpc", getSyscoinRPCHandler);
+        httpsServer.createContext("/syscoinj", getSyscoinJHandler);
         httpsServer.setExecutor(Executors.newFixedThreadPool(256));
         return httpsServer;
     }

@@ -21,6 +21,7 @@ public class InfoHandler extends CommonHttpHandler {
                 "\t/superblockbysyscoinblock?height=<blockheight>" + System.lineSeparator() +
                 "\t/superblock?hash=<superblockid>" + System.lineSeparator() +
                 "\t/superblock?height=<superblockheight>" + System.lineSeparator() + System.lineSeparator() +
+                "\t/syscoinj" + System.lineSeparator() +
                 "Valid Syscoin RPC calls: " + System.lineSeparator() +
                 "\t/syscoinrpc?method=<methodname>&param1name=<param1value>&paramNname=<paramNvalue>...";
         writeResponse(httpsExchange, response);
