@@ -37,7 +37,7 @@ public class GetSyscoinJHandler extends CommonHttpHandler {
         String response;
 
         try {
-            response = gson.toJson(syscoinWrapper.getChainHead().toString());
+            response = gson.toJson(syscoinWrapper.getChainHead());
         } catch (Exception exception) {
             response =  gson.toJson(new RestError("Could not get Superblock, internal error!"));
         }
