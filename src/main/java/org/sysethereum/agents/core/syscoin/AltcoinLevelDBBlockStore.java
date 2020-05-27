@@ -93,7 +93,7 @@ public class AltcoinLevelDBBlockStore implements BlockStore {
         buffer.putInt(block.getHeight());
         // Using bitcoinSerialize instead of unsafeBitcoinSerialize as used in the original implementation because we are not going to remove the
         // trailing 00 byte
-        byte[] bytes = block.getHeader().bitcoinSerialize();
+        byte[] bytes = block.getHeader().cloneAsHeader().unsafeBitcoinSerialize();
         buffer.put(bytes);  // DON'T Trim the trailing 00 byte (zero transactions) - It would also trim the AuxPow.
     }
 
