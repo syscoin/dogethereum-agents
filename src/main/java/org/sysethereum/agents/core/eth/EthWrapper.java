@@ -180,12 +180,11 @@ public class EthWrapper {
                 suggestedGasPrice = gasPriceMaximum;
             }
             if(!gasPriceMinimum.equals(suggestedGasPrice)) {
-                gasPriceMinimum = suggestedGasPrice;
-                logger.info("setting new min gas price to " + gasPriceMinimum);
+                logger.info("setting new gas price to " + suggestedGasPrice);
 
-                claimContractApi.updateGasPrice(gasPriceMinimum);
-                battleContractApi.updateGasPrice(gasPriceMinimum);
-                superblockContractApi.updateGasPrice(gasPriceMinimum);
+                claimContractApi.updateGasPrice(suggestedGasPrice);
+                battleContractApi.updateGasPrice(suggestedGasPrice);
+                superblockContractApi.updateGasPrice(suggestedGasPrice);
             }
         }
     }
